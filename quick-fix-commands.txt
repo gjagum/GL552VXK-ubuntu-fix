@@ -1,0 +1,62 @@
+# ASUS ROG Suspend Fix - Quick Commands Reference
+
+## Full Installation (After Fresh Ubuntu)
+sudo ./fix-asus-suspend.sh
+sudo reboot
+sudo test-suspend
+
+## Manual GRUB Update Only
+sudo nano /etc/default/grub
+# Change to:
+# GRUB_CMDLINE_LINUX_DEFAULT="quiet splash acpi_osi=\"Windows 2020\" pcie_aspm=off pcie_port_pm=off nouveau.modeset=0 nvidia.NVreg_EnableS0ixPowerManagement=1 mem_sleep_default=deep"
+sudo update-grub
+sudo reboot
+
+## Check Current Configuration
+cat /proc/cmdline | grep -o "acpi_osi[^ ]*\|pcie[^ ]*\|nvidia[^ ]*\|mem_sleep[^ ]*"
+cat /sys/power/mem_sleep
+cat /proc/acpi/wakeup | grep "*enabled"
+
+## Test Suspend
+systemctl suspend
+# or
+sudo test-suspend
+
+## Troubleshooting Commands
+# Check logs
+journalctl -b 0 | grep -i "suspend\|resume\|error"
+sudo dmesg | grep -i "suspend\|resume\|s3\|deep"
+
+# Find enabled wakeup sources
+find /sys/devices -name wakeup -type f -exec grep -l enabled {} \;
+
+# Switch sleep modes (temporary)
+echo deep | sudo tee /sys/power/mem_sleep      # Deep sleep (S3)
+echo s2idle | sudo tee /sys/power/mem_sleep    # Shallow sleep
+
+## Revert Changes
+# 1. Disable service
+sudo systemctl disable configure-wakeup.service
+sudo systemctl stop configure-wakeup.service
+
+# 2. Remove files
+sudo rm /etc/systemd/system/configure-wakeup.service
+sudo rm /usr/local/bin/configure-wakeup
+sudo rm /usr/local/bin/test-suspend
+sudo systemctl daemon-reload
+
+# 3. Restore GRUB from backup (check /root/backup-suspend-fix-*)
+# 4. Update GRUB and reboot
+sudo update-grub
+sudo reboot
+
+## Key Files
+- Configuration: /etc/default/grub
+- Script: /usr/local/bin/configure-wakeup  
+- Service: /etc/systemd/system/configure-wakeup.service
+- Test: /usr/local/bin/test-suspend
+- Docs: /home/$(whoami)/Documents/asus-rog-suspend-fix.md
+
+## If NVIDIA Driver Not Installed
+sudo ubuntu-drivers autoinstall
+sudo reboot

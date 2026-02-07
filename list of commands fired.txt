@@ -1,0 +1,69 @@
+sudo cp /tmp/disable-i2c-hid-acpi.conf /etc/modprobe.d/disable-i2c-hid-acpi.conf
+sudo cp /tmp/elan-touchpad.conf /etc/modules-load.d/elan-touchpad.conf
+sudo modprobe -r i2c_hid_acpi
+sudo modprobe elan_i2c
+
+
+sudo cp /tmp/fix-elantouchpad.sh /usr/local/bin/
+sudo chmod +x /usr/local/bin/fix-elantouchpad.sh
+sudo cp /tmp/fix-elantouchpad.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable fix-elantouchpad.service
+sudo systemctl start fix-elantouchpad.service
+
+sudo modprobe -r elan_i2c i2c_hid_acpi
+sudo modprobe elan_i2c
+
+sudo sh -c 'echo "i2c-ELAN1200:00" > /sys/bus/i2c/drivers/elan_i2c/bind'
+xinput list
+
+sudo rmmod elan_i2c
+sudo modprobe elan_i2c
+
+sudo sh -c 'echo "auto" > /sys/bus/i2c/devices/i2c-ELAN1200:00/power/control'
+sudo rmmod elan_i2c
+sudo modprobe elan_i2c
+Then check: cat /sys/bus/i2c/devices/i2c-ELAN1200:00/driver/name
+If still no driver bound, try blacklisting the conflicting driver:
+sudo sh -c 'echo "blacklist i2c_hid_acpi" >> /etc/modprobe.d/blacklist-i2c-hid.conf'
+sudo update-initramfs -u
+
+sudo rm /etc/modprobe.d/blacklist-i2c-hid.conf
+sudo update-initramfs -u
+sudo reboot
+After reboot, verify with xinput list if trackpad works. If it works after boot but fails after sleep, the sleep hook will handle reload.
+
+---------------------------------------------------
+I'm not 100% sure. The i2c_hid_acpi driver should handle sleep/resume properly, but since your original issue was about it not working after sleep, we should test it first.
+Test:
+systemctl suspend
+Wake up and see if the touchpad works.
+If it doesn't work after sleep, we can add a sleep hook to reload the driver:
+pkexec tee /etc/systemd/system-sleep/elantouchpad-resume << 'EOF'
+#!/bin/bash
+case $1/$2 in
+  post/*)
+    modprobe -r i2c_hid_acpi
+    modprobe i2c_hid_acpi
+    ;;
+esac
+EOF
+pkexec chmod +x /etc/systemd/system-sleep/elantouchpad-resume
+Would you like to test suspend first, or should I add the sleep hook now as a precaution?
+
+-----------------------------------------
+Here's how to fix the suspend issue:
+Option 1: Temporary test (requires sudo)
+echo s2idle | sudo tee /sys/power/mem_sleep
+systemctl suspend
+Option 2: Permanent fix (recommended)
+1. Backup GRUB config:
+sudo cp /etc/default/grub /etc/default/grub.backup
+2. Edit GRUB config and add mem_sleep_default=s2idle to GRUB_CMDLINE_LINUX_DEFAULT:
+sudo nano /etc/default/grub
+   Find: GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
+   Change to: GRUB_CMDLINE_LINUX_DEFAULT="quiet splash mem_sleep_default=s2idle"
+3. Update GRUB:
+sudo update-grub
+4. Reboot and test suspend.
+This fixes the issue because s2idle mode works better with your ASUS laptop's dual graphics setup, while S3 (deep) mode has compatibility problems.
