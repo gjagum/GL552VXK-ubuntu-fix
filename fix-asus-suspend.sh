@@ -1,6 +1,34 @@
 #!/bin/bash
+# ============================================================================
 # ASUS ROG Suspend Fix Installation Script
+# ============================================================================
+#
+# PROBLEM: Suspend issues on ASUS ROG laptops with NVIDIA/Intel dual graphics:
+#          1. Immediate wakeups after suspend
+#          2. Only display turns off, CPU/fan remain running
+#          3. System hangs during suspend/resume
+#          4. Unwanted wakeups from USB/PCIe devices
+# ROOT CAUSES:
+#          1. Incompatible sleep mode (default s2idle vs deep/S3)
+#          2. Wakeup sources enabled (USB devices, PCIe ports)
+#          3. ACPI/PCIe power management incompatibility
+#          4. NVIDIA driver conflicts with Nouveau
+# SOLUTION: Comprehensive fix with:
+#          1. GRUB configuration with optimized kernel parameters
+#          2. Wakeup sources management (enable only power button/lid)
+#          3. Systemd service for automatic wakeup configuration
+#
+# HARDWARE: ASUS ROG GL552VXK with NVIDIA GTX 950M + Intel HD Graphics 630
+# SOFTWARE: Ubuntu 25.10, Kernel 6.17.0-12-generic, NVIDIA Driver 580.126.09
+# GRUB PARAMETERS:
+#          acpi_osi="Windows 2020"      # ACPI compatibility
+#          pcie_aspm=off pcie_port_pm=off # Disable problematic PCIe PM
+#          nouveau.modeset=0            # Disable open-source NVIDIA driver
+#          nvidia.NVreg_EnableS0ixPowerManagement=1 # Enable NVIDIA PM
+#          mem_sleep_default=deep       # Use S3 sleep instead of s2idle
+#
 # Run this script after fresh Ubuntu installation on ASUS laptops with NVIDIA/Intel dual graphics
+# ============================================================================
 
 set -e
 

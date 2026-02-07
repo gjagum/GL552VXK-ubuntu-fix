@@ -1,12 +1,32 @@
 #!/bin/bash
+# ============================================================================
 # ASUS ROG ELAN1200 Touchpad Fix Installer
+# ============================================================================
+# 
+# PROBLEM: ELAN1200 touchpad (04F3:3045) stops working after suspend/resume
+# ROOT CAUSE: ELAN1200 uses i2c_hid_acpi driver, not elan_i2c. After suspend,
+#             driver binding fails or device enters unrecoverable power state.
+# SOLUTION: Create automatic recovery system with:
+#           1. Driver loading at boot (i2c_hid_acpi)
+#           2. Power cycling script for device recovery
+#           3. Systemd service for boot-time recovery
+#           4. Suspend/resume hook for post-resume recovery
+#           5. Comprehensive logging for troubleshooting
+#
+# HARDWARE: ASUS ROG GL552VXK with ELAN1200 touchpad (04F3:3045)
+# SOFTWARE: Ubuntu 25.10, Kernel 6.17.0-12-generic
+# DEVICE: i2c-ELAN1200:00 (I2C HID device, not pure I2C)
+# ACPI: ELAN1200, modalias: acpi:ELAN1200:PNP0C50:
+#
 # Run with sudo on fresh Ubuntu installation
+# ============================================================================
 
 set -e
 
 echo "=== Installing ASUS ROG ELAN1200 Touchpad Fix ==="
 echo "Hardware: ASUS ROG laptop with ELAN1200 touchpad"
 echo "Issue: Touchpad stops working after suspend/resume"
+echo "Solution: Automatic recovery system with power cycling and driver reload"
 echo ""
 
 # Check if running as root
